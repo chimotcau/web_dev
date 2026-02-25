@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+<head>
+  <title>{{ post.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a href="/">← Back</a>
+
+  <h1>{{ post.title }}</h1>
+  <p>{{ post.content }}</p>
+</body>
+</html>

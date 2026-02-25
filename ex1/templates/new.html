@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <title>New Post</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a href="/">← Back</a>
+  <h1>Create New Post</h1>
+
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  <form method="post">
+    <p>Title:</p>
+    <input name="title">
+
+    <p>Content:</p>
+    <textarea name="content" rows="6"></textarea>
+
+    <br><br>
+    <input type="submit" value="Create">
+  </form>
+</body>
+</html>

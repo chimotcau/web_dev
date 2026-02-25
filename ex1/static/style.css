@@ -1,0 +1,16 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 30px;
+}
+
+a {
+  text-decoration: none;
+}
+
+ul {
+  padding-left: 18px;
+}
+
+input, textarea {
+  width: 300px;
+}
