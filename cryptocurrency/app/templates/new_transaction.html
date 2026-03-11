@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>New Transaction</title>
+</head>
+<body>
+    <h1>Add New Transaction</h1>
+
+    <form method="POST">
+        <label>Type:</label>
+        <select name="type">
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+        </select>
+        <br><br>
+
+        <label>Symbol:</label>
+        <input type="text" name="symbol" required>
+        <br><br>
+
+        <label>Quantity:</label>
+        <input type="number" step="any" name="quantity" required>
+        <br><br>
+
+        <label>Price:</label>
+        <input type="number" step="any" name="price" required>
+        <br><br>
+
+        <label>Fee:</label>
+        <input type="number" step="any" name="fee" value="0">
+        <br><br>
+
+        <label>Date:</label>
+        <input type="date" name="timestamp" required>
+        <br><br>
+
+        <label>Exchange:</label>
+        <input type="text" name="exchange">
+        <br><br>
+
+        <label>Note:</label>
+        <input type="text" name="note">
+        <br><br>
+
+        <button type="submit">Save</button>
+    </form>
+
+    <br>
+    <a href="{{ url_for('main.transactions') }}">Back</a>
+</body>
+</html>
