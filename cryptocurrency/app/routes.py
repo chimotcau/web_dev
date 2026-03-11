@@ -1,13 +1,15 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 from .models import Transaction
 from . import db
+from .services.analytics import get_monthly_summary
 
 main = Blueprint("main", __name__)
 
 @main.route("/")
 def dashboard():
-    return render_template("dashboard.html")
+    summary = get_monthly_summary()
+    return render_template("dashboard.html", summary=summary)
 
 @main.route("/transactions")
 def transactions():
@@ -68,3 +70,8 @@ def delete_transaction(id):
     db.session.delete(tx)
     db.session.commit()
     return redirect(url_for("main.transactions"))
+
+@main.route("/api/summary")
+def api_summary():
+    summary = get_monthly_summary()
+    return jsonify(summary)

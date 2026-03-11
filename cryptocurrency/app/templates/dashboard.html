@@ -2,11 +2,45 @@
 <html>
 <head>
     <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Crypto Dashboard</h1>
-    <p>Welcome to Crypto Portfolio Manager</p>
 
+    <p>Total Income This Month: {{ summary.income }}</p>
+    <p>Total Outcome This Month: {{ summary.outcome }}</p>
+    <p>Realized PnL This Month: {{ summary.realized_pnl }}</p>
+
+    <canvas id="summaryChart" width="400" height="200"></canvas>
+
+    <br>
     <a href="{{ url_for('main.transactions') }}">View Transactions</a>
+
+    <script>
+        fetch("/api/summary")
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById("summaryChart").getContext("2d");
+
+                new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: ["Income", "Outcome", "Realized PnL"],
+                        datasets: [{
+                            label: "Monthly Summary",
+                            data: [data.income, data.outcome, data.realized_pnl]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
 </body>
 </html>
