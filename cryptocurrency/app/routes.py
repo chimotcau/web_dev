@@ -1,47 +1,36 @@
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    jsonify,
-    flash,
-    make_response
-)
-
-from werkzeug.security import (
-    generate_password_hash,
-    check_password_hash
-)
-
-from flask_login import (
-    login_user,
-    logout_user,
-    login_required,
-    current_user
-)
-
 from datetime import datetime
 import csv
 from io import StringIO
 
-from .models import Transaction, User, Watchlist
-from . import db
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from flask_login import (
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from . import db
+from .models import Transaction, User, Watchlist
 from .services.analytics import (
     get_monthly_summary,
     get_portfolio_summary,
-    get_statistics_summary
+    get_statistics_summary,
 )
-
-from .services.pricing import (
-    get_live_price,
-    get_kline_data
-)
+from .services.pricing import get_kline_data, get_live_price
 
 
 main = Blueprint("main", __name__)
-
 
 MARKET_COINS = [
     "BTC",
@@ -53,8 +42,76 @@ MARKET_COINS = [
     "DOGE",
     "AVAX",
     "DOT",
-    "LINK"
+    "LINK",
 ]
+
+PREVIEW_COINS = [
+    "BTC",
+    "ETH",
+    "SOL",
+    "BNB",
+    "XRP",
+    "ADA",
+]
+
+
+def parse_date(date_text):
+    if not date_text:
+        return None
+
+    return datetime.strptime(date_text, "%Y-%m-%d")
+
+
+def get_price_data(symbols):
+    data = []
+
+    for symbol in symbols:
+        price = get_live_price(symbol)
+
+        data.append({
+            "symbol": symbol,
+            "price": round(price, 4) if price else 0,
+        })
+
+    return data
+
+
+def get_user_watchlist_symbols():
+    items = Watchlist.query.filter_by(
+        user_id=current_user.id
+    ).all()
+
+    return [item.symbol for item in items]
+
+
+def get_user_watchlist_data():
+    watchlist_data = []
+
+    for symbol in get_user_watchlist_symbols():
+        price = get_live_price(symbol)
+
+        watchlist_data.append({
+            "symbol": symbol,
+            "price": round(price, 4) if price else 0,
+        })
+
+    return watchlist_data
+
+
+def transaction_from_form(tx=None):
+    if tx is None:
+        tx = Transaction(user_id=current_user.id)
+
+    tx.type = request.form["type"]
+    tx.symbol = request.form["symbol"].upper()
+    tx.quantity = float(request.form["quantity"])
+    tx.price = float(request.form["price"])
+    tx.fee = float(request.form.get("fee", 0))
+    tx.timestamp = parse_date(request.form["timestamp"])
+    tx.exchange = request.form.get("exchange", "BYBIT")
+    tx.note = request.form.get("note", "")
+
+    return tx
 
 
 @main.route("/")
@@ -65,30 +122,12 @@ def home():
 @main.route("/dashboard")
 @login_required
 def dashboard():
-    summary = get_monthly_summary()
-    portfolio_summary = get_portfolio_summary()
-    statistics = get_statistics_summary()
-
-    watchlist_items = Watchlist.query.filter_by(
-        user_id=current_user.id
-    ).all()
-
-    watchlist_data = []
-
-    for item in watchlist_items:
-        price = get_live_price(item.symbol)
-
-        watchlist_data.append({
-            "symbol": item.symbol,
-            "price": round(price, 4) if price else 0
-        })
-
     return render_template(
         "dashboard.html",
-        summary=summary,
-        portfolio_summary=portfolio_summary,
-        statistics=statistics,
-        watchlist_data=watchlist_data
+        summary=get_monthly_summary(),
+        portfolio_summary=get_portfolio_summary(),
+        statistics=get_statistics_summary(),
+        watchlist_data=get_user_watchlist_data(),
     )
 
 
@@ -97,8 +136,8 @@ def dashboard():
 def transactions():
     symbol = request.args.get("symbol")
     tx_type = request.args.get("type")
-    date_from = request.args.get("date_from")
-    date_to = request.args.get("date_to")
+    date_from = parse_date(request.args.get("date_from"))
+    date_to = parse_date(request.args.get("date_to"))
     sort = request.args.get("sort", "newest")
 
     query = Transaction.query.filter_by(
@@ -114,12 +153,10 @@ def transactions():
         query = query.filter_by(type=tx_type)
 
     if date_from:
-        start_date = datetime.strptime(date_from, "%Y-%m-%d")
-        query = query.filter(Transaction.timestamp >= start_date)
+        query = query.filter(Transaction.timestamp >= date_from)
 
     if date_to:
-        end_date = datetime.strptime(date_to, "%Y-%m-%d")
-        query = query.filter(Transaction.timestamp <= end_date)
+        query = query.filter(Transaction.timestamp <= date_to)
 
     if sort == "oldest":
         query = query.order_by(Transaction.timestamp.asc())
@@ -137,11 +174,9 @@ def transactions():
     else:
         query = query.order_by(Transaction.timestamp.desc())
 
-    txs = query.all()
-
     return render_template(
         "transactions.html",
-        txs=txs
+        txs=query.all(),
     )
 
 
@@ -149,26 +184,7 @@ def transactions():
 @login_required
 def new_transaction():
     if request.method == "POST":
-        tx_type = request.form["type"]
-        symbol = request.form["symbol"]
-        quantity = float(request.form["quantity"])
-        price = float(request.form["price"])
-        fee = float(request.form.get("fee", 0))
-        timestamp = datetime.strptime(request.form["timestamp"], "%Y-%m-%d")
-        exchange = request.form.get("exchange", "BYBIT")
-        note = request.form.get("note", "")
-
-        tx = Transaction(
-            type=tx_type,
-            symbol=symbol.upper(),
-            quantity=quantity,
-            price=price,
-            fee=fee,
-            timestamp=timestamp,
-            exchange=exchange,
-            note=note,
-            user_id=current_user.id
-        )
+        tx = transaction_from_form()
 
         db.session.add(tx)
         db.session.commit()
@@ -178,7 +194,7 @@ def new_transaction():
     return render_template(
         "new_transaction.html",
         default_symbol=request.args.get("symbol", ""),
-        default_price=request.args.get("price", "")
+        default_price=request.args.get("price", ""),
     )
 
 
@@ -187,18 +203,11 @@ def new_transaction():
 def edit_transaction(id):
     tx = Transaction.query.filter_by(
         id=id,
-        user_id=current_user.id
+        user_id=current_user.id,
     ).first_or_404()
 
     if request.method == "POST":
-        tx.type = request.form["type"]
-        tx.symbol = request.form["symbol"].upper()
-        tx.quantity = float(request.form["quantity"])
-        tx.price = float(request.form["price"])
-        tx.fee = float(request.form.get("fee", 0))
-        tx.timestamp = datetime.strptime(request.form["timestamp"], "%Y-%m-%d")
-        tx.exchange = request.form.get("exchange", "")
-        tx.note = request.form.get("note", "")
+        transaction_from_form(tx)
 
         db.session.commit()
 
@@ -206,7 +215,7 @@ def edit_transaction(id):
 
     return render_template(
         "edit_transaction.html",
-        tx=tx
+        tx=tx,
     )
 
 
@@ -215,20 +224,13 @@ def edit_transaction(id):
 def delete_transaction(id):
     tx = Transaction.query.filter_by(
         id=id,
-        user_id=current_user.id
+        user_id=current_user.id,
     ).first_or_404()
 
     db.session.delete(tx)
     db.session.commit()
 
     return redirect(url_for("main.transactions"))
-
-
-@main.route("/api/summary")
-@login_required
-def api_summary():
-    summary = get_monthly_summary()
-    return jsonify(summary)
 
 
 @main.route("/register", methods=["GET", "POST"])
@@ -250,12 +252,10 @@ def register():
             flash("Username already exists")
             return redirect(url_for("main.register"))
 
-        hashed_password = generate_password_hash(password)
-
         user = User(
             username=username,
             email=email,
-            password_hash=hashed_password
+            password_hash=generate_password_hash(password),
         )
 
         db.session.add(user)
@@ -276,10 +276,7 @@ def login():
 
         user = User.query.filter_by(email=email).first()
 
-        if user and check_password_hash(
-            user.password_hash,
-            password
-        ):
+        if user and check_password_hash(user.password_hash, password):
             login_user(user)
 
             return redirect(url_for("main.dashboard"))
@@ -307,7 +304,6 @@ def export_csv():
     ).all()
 
     output = StringIO()
-
     writer = csv.writer(output)
 
     writer.writerow([
@@ -319,7 +315,7 @@ def export_csv():
         "Fee",
         "Timestamp",
         "Exchange",
-        "Note"
+        "Note",
     ])
 
     for tx in txs:
@@ -332,7 +328,7 @@ def export_csv():
             tx.fee,
             tx.timestamp,
             tx.exchange,
-            tx.note
+            tx.note,
         ])
 
     response = make_response(output.getvalue())
@@ -340,7 +336,6 @@ def export_csv():
     response.headers["Content-Disposition"] = (
         "attachment; filename=transactions.csv"
     )
-
     response.headers["Content-type"] = "text/csv"
 
     return response
@@ -349,58 +344,11 @@ def export_csv():
 @main.route("/market")
 @login_required
 def market():
-    market_data = []
-
-    for coin in MARKET_COINS:
-        price = get_live_price(coin)
-
-        market_data.append({
-            "symbol": coin,
-            "price": round(price, 4) if price else 0
-        })
-
-    watchlist_symbols = [
-        item.symbol for item in Watchlist.query.filter_by(
-            user_id=current_user.id
-        ).all()
-    ]
-
     return render_template(
         "market.html",
-        market_data=market_data,
-        watchlist_symbols=watchlist_symbols
+        market_data=get_price_data(MARKET_COINS),
+        watchlist_symbols=get_user_watchlist_symbols(),
     )
-
-
-@main.route("/api/market-data")
-@login_required
-def market_data_api():
-    market_data = []
-
-    for symbol in MARKET_COINS:
-        price = get_live_price(symbol)
-
-        market_data.append({
-            "symbol": symbol,
-            "price": round(price, 4) if price else 0
-        })
-
-    return jsonify(market_data)
-
-
-@main.route("/api/kline/<symbol>")
-@login_required
-def kline_api(symbol):
-    interval = request.args.get("interval", "D")
-    limit = int(request.args.get("limit", 60))
-
-    data = get_kline_data(
-        symbol=symbol,
-        interval=interval,
-        limit=limit
-    )
-
-    return jsonify(data)
 
 
 @main.route("/watchlist/toggle/<symbol>", methods=["POST"])
@@ -410,7 +358,7 @@ def toggle_watchlist(symbol):
 
     existing = Watchlist.query.filter_by(
         user_id=current_user.id,
-        symbol=symbol
+        symbol=symbol,
     ).first()
 
     if existing:
@@ -419,12 +367,12 @@ def toggle_watchlist(symbol):
 
         return jsonify({
             "symbol": symbol,
-            "watched": False
+            "watched": False,
         })
 
     item = Watchlist(
         user_id=current_user.id,
-        symbol=symbol
+        symbol=symbol,
     )
 
     db.session.add(item)
@@ -432,34 +380,35 @@ def toggle_watchlist(symbol):
 
     return jsonify({
         "symbol": symbol,
-        "watched": True
+        "watched": True,
     })
 
 
-@main.route("/api/popular-prices")
+@main.route("/api/summary")
 @login_required
-def popular_prices():
-    coins = [
-        "BTC",
-        "ETH",
-        "SOL",
-        "BNB",
-        "XRP",
-        "ADA"
-    ]
+def api_summary():
+    return jsonify(get_monthly_summary())
 
-    data = []
 
-    for coin in coins:
-        price = get_live_price(coin)
+@main.route("/api/market-data")
+@login_required
+def market_data_api():
+    return jsonify(get_price_data(MARKET_COINS))
 
-        if price:
-            data.append({
-                "symbol": coin,
-                "price": round(price, 2)
-            })
 
-    return jsonify(data)
+@main.route("/api/kline/<symbol>")
+@login_required
+def kline_api(symbol):
+    interval = request.args.get("interval", "D")
+    limit = int(request.args.get("limit", 60))
+
+    return jsonify(
+        get_kline_data(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+        )
+    )
 
 
 @main.route("/api/pnl-chart")
@@ -487,29 +436,10 @@ def pnl_chart():
 
     return jsonify({
         "labels": labels,
-        "values": values
+        "values": values,
     })
 
 
 @main.route("/api/preview-market")
 def preview_market():
-    coins = [
-        "BTC",
-        "ETH",
-        "SOL",
-        "BNB",
-        "XRP",
-        "ADA"
-    ]
-
-    data = []
-
-    for symbol in coins:
-        price = get_live_price(symbol)
-
-        data.append({
-            "symbol": symbol,
-            "price": round(price, 4) if price else 0
-        })
-
-    return jsonify(data)
+    return jsonify(get_price_data(PREVIEW_COINS))
