@@ -42,19 +42,3 @@ Open:
 ```text
 http://127.0.0.1:5000/
 ```
-
-## Deployment Notes
-
-The app reads `DATABASE_URL` automatically. For PostgreSQL providers that expose `postgres://...`, the app converts it to `postgresql://...`.
-
-Set a strong `SECRET_KEY` in production.
-
-## Do Not Commit
-
-The repository ignores local database and cache files:
-
-- `instance/`
-- `*.db`
-- `__pycache__/`
-- `.env`
-- virtual environments
