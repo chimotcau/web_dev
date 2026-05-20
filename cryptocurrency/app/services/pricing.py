@@ -20,17 +20,10 @@ def get_live_price(symbol):
         if age < timedelta(seconds=60):
             return cached.price
 
-    params = {
-        "category": "spot",
-        "symbol": f"{symbol}USDT"
-    }
+    params = {"category": "spot", "symbol": f"{symbol}USDT"}
 
     try:
-        response = requests.get(
-            BYBIT_TICKER_URL,
-            params=params,
-            timeout=10
-        )
+        response = requests.get(BYBIT_TICKER_URL, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -49,11 +42,7 @@ def get_live_price(symbol):
         cached.updated_at = datetime.utcnow()
         cached.source = "bybit"
     else:
-        cached = PriceCache(
-            symbol=symbol,
-            price=price,
-            source="bybit"
-        )
+        cached = PriceCache(symbol=symbol, price=price, source="bybit")
         db.session.add(cached)
 
     db.session.commit()
@@ -68,15 +57,11 @@ def get_kline_data(symbol, interval="D", limit=60):
         "category": "spot",
         "symbol": f"{symbol}USDT",
         "interval": interval,
-        "limit": limit
+        "limit": limit,
     }
 
     try:
-        response = requests.get(
-            BYBIT_KLINE_URL,
-            params=params,
-            timeout=10
-        )
+        response = requests.get(BYBIT_KLINE_URL, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -85,14 +70,16 @@ def get_kline_data(symbol, interval="D", limit=60):
         candles = []
 
         for item in reversed(raw_candles):
-            candles.append({
-                "time": int(int(item[0]) / 1000),
-                "open": float(item[1]),
-                "high": float(item[2]),
-                "low": float(item[3]),
-                "close": float(item[4]),
-                "volume": float(item[5])
-            })
+            candles.append(
+                {
+                    "time": int(int(item[0]) / 1000),
+                    "open": float(item[1]),
+                    "high": float(item[2]),
+                    "low": float(item[3]),
+                    "close": float(item[4]),
+                    "volume": float(item[5]),
+                }
+            )
 
         return candles
 

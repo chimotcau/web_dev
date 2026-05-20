@@ -68,18 +68,18 @@ def get_price_data(symbols):
     for symbol in symbols:
         price = get_live_price(symbol)
 
-        data.append({
-            "symbol": symbol,
-            "price": round(price, 4) if price else 0,
-        })
+        data.append(
+            {
+                "symbol": symbol,
+                "price": round(price, 4) if price else 0,
+            }
+        )
 
     return data
 
 
 def get_user_watchlist_symbols():
-    items = Watchlist.query.filter_by(
-        user_id=current_user.id
-    ).all()
+    items = Watchlist.query.filter_by(user_id=current_user.id).all()
 
     return [item.symbol for item in items]
 
@@ -90,10 +90,12 @@ def get_user_watchlist_data():
     for symbol in get_user_watchlist_symbols():
         price = get_live_price(symbol)
 
-        watchlist_data.append({
-            "symbol": symbol,
-            "price": round(price, 4) if price else 0,
-        })
+        watchlist_data.append(
+            {
+                "symbol": symbol,
+                "price": round(price, 4) if price else 0,
+            }
+        )
 
     return watchlist_data
 
@@ -140,14 +142,10 @@ def transactions():
     date_to = parse_date(request.args.get("date_to"))
     sort = request.args.get("sort", "newest")
 
-    query = Transaction.query.filter_by(
-        user_id=current_user.id
-    )
+    query = Transaction.query.filter_by(user_id=current_user.id)
 
     if symbol:
-        query = query.filter(
-            Transaction.symbol.ilike(f"%{symbol}%")
-        )
+        query = query.filter(Transaction.symbol.ilike(f"%{symbol}%"))
 
     if tx_type:
         query = query.filter_by(type=tx_type)
@@ -162,14 +160,10 @@ def transactions():
         query = query.order_by(Transaction.timestamp.asc())
 
     elif sort == "amount_high":
-        query = query.order_by(
-            (Transaction.quantity * Transaction.price).desc()
-        )
+        query = query.order_by((Transaction.quantity * Transaction.price).desc())
 
     elif sort == "amount_low":
-        query = query.order_by(
-            (Transaction.quantity * Transaction.price).asc()
-        )
+        query = query.order_by((Transaction.quantity * Transaction.price).asc())
 
     else:
         query = query.order_by(Transaction.timestamp.desc())
@@ -297,45 +291,47 @@ def logout():
 @main.route("/export/csv")
 @login_required
 def export_csv():
-    txs = Transaction.query.filter_by(
-        user_id=current_user.id
-    ).order_by(
-        Transaction.timestamp.desc()
-    ).all()
+    txs = (
+        Transaction.query.filter_by(user_id=current_user.id)
+        .order_by(Transaction.timestamp.desc())
+        .all()
+    )
 
     output = StringIO()
     writer = csv.writer(output)
 
-    writer.writerow([
-        "ID",
-        "Type",
-        "Symbol",
-        "Quantity",
-        "Price",
-        "Fee",
-        "Timestamp",
-        "Exchange",
-        "Note",
-    ])
+    writer.writerow(
+        [
+            "ID",
+            "Type",
+            "Symbol",
+            "Quantity",
+            "Price",
+            "Fee",
+            "Timestamp",
+            "Exchange",
+            "Note",
+        ]
+    )
 
     for tx in txs:
-        writer.writerow([
-            tx.id,
-            tx.type,
-            tx.symbol,
-            tx.quantity,
-            tx.price,
-            tx.fee,
-            tx.timestamp,
-            tx.exchange,
-            tx.note,
-        ])
+        writer.writerow(
+            [
+                tx.id,
+                tx.type,
+                tx.symbol,
+                tx.quantity,
+                tx.price,
+                tx.fee,
+                tx.timestamp,
+                tx.exchange,
+                tx.note,
+            ]
+        )
 
     response = make_response(output.getvalue())
 
-    response.headers["Content-Disposition"] = (
-        "attachment; filename=transactions.csv"
-    )
+    response.headers["Content-Disposition"] = "attachment; filename=transactions.csv"
     response.headers["Content-type"] = "text/csv"
 
     return response
@@ -365,10 +361,12 @@ def toggle_watchlist(symbol):
         db.session.delete(existing)
         db.session.commit()
 
-        return jsonify({
-            "symbol": symbol,
-            "watched": False,
-        })
+        return jsonify(
+            {
+                "symbol": symbol,
+                "watched": False,
+            }
+        )
 
     item = Watchlist(
         user_id=current_user.id,
@@ -378,10 +376,12 @@ def toggle_watchlist(symbol):
     db.session.add(item)
     db.session.commit()
 
-    return jsonify({
-        "symbol": symbol,
-        "watched": True,
-    })
+    return jsonify(
+        {
+            "symbol": symbol,
+            "watched": True,
+        }
+    )
 
 
 @main.route("/api/summary")
@@ -414,11 +414,11 @@ def kline_api(symbol):
 @main.route("/api/pnl-chart")
 @login_required
 def pnl_chart():
-    txs = Transaction.query.filter_by(
-        user_id=current_user.id
-    ).order_by(
-        Transaction.timestamp.asc()
-    ).all()
+    txs = (
+        Transaction.query.filter_by(user_id=current_user.id)
+        .order_by(Transaction.timestamp.asc())
+        .all()
+    )
 
     labels = []
     values = []
@@ -434,10 +434,12 @@ def pnl_chart():
         labels.append(tx.timestamp.strftime("%Y-%m-%d"))
         values.append(round(running_pnl, 2))
 
-    return jsonify({
-        "labels": labels,
-        "values": values,
-    })
+    return jsonify(
+        {
+            "labels": labels,
+            "values": values,
+        }
+    )
 
 
 @main.route("/api/preview-market")

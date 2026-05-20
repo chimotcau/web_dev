@@ -17,20 +17,11 @@ def create_app():
     database_url = os.getenv("DATABASE_URL")
 
     if database_url:
-        database_url = database_url.replace(
-            "postgres://",
-            "postgresql://",
-            1
-        )
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = (
-        database_url or "sqlite:///portfolio.db"
-    )
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url or "sqlite:///portfolio.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SECRET_KEY"] = os.getenv(
-        "SECRET_KEY",
-        "dev-secret-key-change-me"
-    )
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -42,6 +33,7 @@ def create_app():
     from .models import PriceCache, Transaction, User, Watchlist  # noqa: F401
 
     from .routes import main
+
     app.register_blueprint(main)
 
     return app

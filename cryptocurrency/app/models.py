@@ -37,20 +37,12 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
 
-    transactions = db.relationship(
-        "Transaction",
-        backref="user",
-        lazy=True
-    )
+    transactions = db.relationship("Transaction", backref="user", lazy=True)
 
 
 class Watchlist(db.Model):
     __table_args__ = (
-        db.UniqueConstraint(
-            "user_id",
-            "symbol",
-            name="uq_watchlist_user_symbol"
-        ),
+        db.UniqueConstraint("user_id", "symbol", name="uq_watchlist_user_symbol"),
     )
 
     id = db.Column(db.Integer, primary_key=True)

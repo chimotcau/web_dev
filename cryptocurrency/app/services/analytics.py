@@ -7,9 +7,11 @@ from .pricing import get_live_price
 
 
 def get_monthly_summary():
-    txs = Transaction.query.filter_by(
-        user_id=current_user.id
-    ).order_by(Transaction.timestamp.asc()).all()
+    txs = (
+        Transaction.query.filter_by(user_id=current_user.id)
+        .order_by(Transaction.timestamp.asc())
+        .all()
+    )
 
     current_month = datetime.utcnow().month
     current_year = datetime.utcnow().year
@@ -26,19 +28,27 @@ def get_monthly_summary():
         if tx.type == "BUY":
             total_cost = tx.quantity * tx.price + tx.fee
 
-            if tx.timestamp.month == current_month and tx.timestamp.year == current_year:
+            if (
+                tx.timestamp.month == current_month
+                and tx.timestamp.year == current_year
+            ):
                 outcome += total_cost
 
-            buy_queues[symbol].append({
-                "quantity": tx.quantity,
-                "price": tx.price,
-                "fee_per_unit": tx.fee / tx.quantity if tx.quantity else 0
-            })
+            buy_queues[symbol].append(
+                {
+                    "quantity": tx.quantity,
+                    "price": tx.price,
+                    "fee_per_unit": tx.fee / tx.quantity if tx.quantity else 0,
+                }
+            )
 
         elif tx.type == "SELL":
             sell_income = tx.quantity * tx.price - tx.fee
 
-            if tx.timestamp.month == current_month and tx.timestamp.year == current_year:
+            if (
+                tx.timestamp.month == current_month
+                and tx.timestamp.year == current_year
+            ):
                 income += sell_income
 
             remaining_sell_qty = tx.quantity
@@ -49,9 +59,7 @@ def get_monthly_summary():
 
                 matched_qty = min(remaining_sell_qty, buy_lot["quantity"])
 
-                cost_basis += matched_qty * (
-                    buy_lot["price"] + buy_lot["fee_per_unit"]
-                )
+                cost_basis += matched_qty * (buy_lot["price"] + buy_lot["fee_per_unit"])
 
                 buy_lot["quantity"] -= matched_qty
                 remaining_sell_qty -= matched_qty
@@ -61,20 +69,25 @@ def get_monthly_summary():
 
             pnl = sell_income - cost_basis
 
-            if tx.timestamp.month == current_month and tx.timestamp.year == current_year:
+            if (
+                tx.timestamp.month == current_month
+                and tx.timestamp.year == current_year
+            ):
                 realized_pnl += pnl
 
     return {
         "income": round(income, 2),
         "outcome": round(outcome, 2),
-        "realized_pnl": round(realized_pnl, 2)
+        "realized_pnl": round(realized_pnl, 2),
     }
 
 
 def get_holdings_summary():
-    txs = Transaction.query.filter_by(
-        user_id=current_user.id
-    ).order_by(Transaction.timestamp.asc()).all()
+    txs = (
+        Transaction.query.filter_by(user_id=current_user.id)
+        .order_by(Transaction.timestamp.asc())
+        .all()
+    )
 
     buy_queues = defaultdict(list)
 
@@ -82,11 +95,13 @@ def get_holdings_summary():
         symbol = tx.symbol.upper()
 
         if tx.type == "BUY":
-            buy_queues[symbol].append({
-                "quantity": tx.quantity,
-                "price": tx.price,
-                "fee_per_unit": tx.fee / tx.quantity if tx.quantity else 0
-            })
+            buy_queues[symbol].append(
+                {
+                    "quantity": tx.quantity,
+                    "price": tx.price,
+                    "fee_per_unit": tx.fee / tx.quantity if tx.quantity else 0,
+                }
+            )
 
         elif tx.type == "SELL":
             remaining_sell_qty = tx.quantity
@@ -122,12 +137,14 @@ def get_holdings_summary():
         avg_cost = total_cost / total_qty if total_qty else 0
 
         if total_qty > 0:
-            holdings.append({
-                "symbol": symbol,
-                "quantity": round(total_qty, 8),
-                "cost_basis": round(total_cost, 2),
-                "average_cost": round(avg_cost, 2)
-            })
+            holdings.append(
+                {
+                    "symbol": symbol,
+                    "quantity": round(total_qty, 8),
+                    "cost_basis": round(total_cost, 2),
+                    "average_cost": round(avg_cost, 2),
+                }
+            )
 
     return holdings
 
@@ -156,28 +173,31 @@ def get_portfolio_summary():
         total_cost_basis += h["cost_basis"]
         total_unrealized_pnl += unrealized_pnl
 
-        portfolio.append({
-            "symbol": symbol,
-            "quantity": round(quantity, 8),
-            "live_price": round(live_price, 2),
-            "market_value": round(market_value, 2),
-            "cost_basis": round(h["cost_basis"], 2),
-            "unrealized_pnl": round(unrealized_pnl, 2)
-        })
+        portfolio.append(
+            {
+                "symbol": symbol,
+                "quantity": round(quantity, 8),
+                "live_price": round(live_price, 2),
+                "market_value": round(market_value, 2),
+                "cost_basis": round(h["cost_basis"], 2),
+                "unrealized_pnl": round(unrealized_pnl, 2),
+            }
+        )
 
     return {
         "portfolio": portfolio,
         "total_market_value": round(total_market_value, 2),
         "total_cost_basis": round(total_cost_basis, 2),
-        "total_unrealized_pnl": round(total_unrealized_pnl, 2)
+        "total_unrealized_pnl": round(total_unrealized_pnl, 2),
     }
 
+
 def get_statistics_summary():
-    txs = Transaction.query.filter_by(
-        user_id=current_user.id
-    ).order_by(
-        Transaction.timestamp.asc()
-    ).all()
+    txs = (
+        Transaction.query.filter_by(user_id=current_user.id)
+        .order_by(Transaction.timestamp.asc())
+        .all()
+    )
 
     total_trades = len(txs)
 
@@ -211,11 +231,7 @@ def get_statistics_summary():
     total_cost_basis = portfolio_summary["total_cost_basis"]
     total_unrealized_pnl = portfolio_summary["total_unrealized_pnl"]
 
-    roi = (
-        total_unrealized_pnl / total_cost_basis * 100
-        if total_cost_basis
-        else 0
-    )
+    roi = total_unrealized_pnl / total_cost_basis * 100 if total_cost_basis else 0
 
     best_coin = "N/A"
     worst_coin = "N/A"
@@ -247,5 +263,5 @@ def get_statistics_summary():
         "avg_sell_price": round(avg_sell_price, 2),
         "roi": round(roi, 2),
         "best_coin": best_coin,
-        "worst_coin": worst_coin
+        "worst_coin": worst_coin,
     }

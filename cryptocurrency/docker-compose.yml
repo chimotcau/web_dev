@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    container_name: crypto_portfolio_web
+    ports:
+      - "5000:5000"
+    environment:
+      SECRET_KEY: docker-dev-secret-key
+      DATABASE_URL: postgresql://crypto:crypto@db:5432/crypto_portfolio
+    depends_on:
+      - db
+    command: >
+      sh -c "sleep 3 &&
+             python -m flask --app run.py db upgrade &&
+             gunicorn --bind 0.0.0.0:5000 run:app"
+
+  db:
+    image: postgres:16-alpine
+    container_name: crypto_portfolio_db
+    environment:
+      POSTGRES_USER: crypto
+      POSTGRES_PASSWORD: crypto
+      POSTGRES_DB: crypto_portfolio
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
