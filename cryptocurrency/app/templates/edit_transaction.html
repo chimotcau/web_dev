@@ -2,50 +2,222 @@
 <html>
 <head>
     <title>Edit Transaction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>Edit Transaction</h1>
 
-    <form method="POST">
-        <label>Type:</label>
-        <select name="type">
-            <option value="BUY" {% if tx.type == "BUY" %}selected{% endif %}>BUY</option>
-            <option value="SELL" {% if tx.type == "SELL" %}selected{% endif %}>SELL</option>
-        </select>
-        <br><br>
+<div class="app-layout">
 
-        <label>Symbol:</label>
-        <input type="text" name="symbol" value="{{ tx.symbol }}" required>
-        <br><br>
+    <aside class="sidebar">
+        <h2>CryptoManager</h2>
 
-        <label>Quantity:</label>
-        <input type="number" step="any" name="quantity" value="{{ tx.quantity }}" required>
-        <br><br>
+        <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('main.market') }}">Market / Buy</a>
+        <a href="{{ url_for('main.transactions') }}">Transactions</a>
+        <a href="{{ url_for('main.logout') }}">Logout</a>
+    </aside>
 
-        <label>Price:</label>
-        <input type="number" step="any" name="price" value="{{ tx.price }}" required>
-        <br><br>
+    <main class="main-content">
 
-        <label>Fee:</label>
-        <input type="number" step="any" name="fee" value="{{ tx.fee }}" required>
-        <br><br>
+        <div class="page-header">
+            <div>
+                <h1>Edit Transaction</h1>
+                <p>Update your BUY or SELL transaction information.</p>
+            </div>
+        </div>
 
-        <label>Date:</label>
-        <input type="date" name="timestamp" value="{{ tx.timestamp.strftime('%Y-%m-%d') }}" required>
-        <br><br>
+        <div class="transaction-layout">
 
-        <label>Exchange:</label>
-        <input type="text" name="exchange" value="{{ tx.exchange }}">
-        <br><br>
+            <div class="card-box transaction-form-card">
 
-        <label>Note:</label>
-        <input type="text" name="note" value="{{ tx.note }}">
-        <br><br>
+                <form method="POST" class="transaction-pro-form">
 
-        <button type="submit">Update</button>
-    </form>
+                    <div class="transaction-top-strip">
 
-    <br>
-    <a href="{{ url_for('main.transactions') }}">Back</a>
+                        <div class="selected-coin-badge">
+                            <span>Selected Coin</span>
+                            <strong id="selectedSymbolPreview">
+                                {{ tx.symbol }}
+                            </strong>
+                        </div>
+
+                        <div class="selected-coin-badge">
+                            <span>Market Price</span>
+                            <strong id="selectedPricePreview">
+                                ${{ tx.price }}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                    <div class="form-grid-2">
+
+                        <div class="form-group">
+                            <label for="type">Type</label>
+
+                            <select name="type" id="type" required>
+                                <option value="BUY" {% if tx.type == "BUY" %}selected{% endif %}>
+                                    BUY
+                                </option>
+
+                                <option value="SELL" {% if tx.type == "SELL" %}selected{% endif %}>
+                                    SELL
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="timestamp">Date</label>
+
+                            <input
+                                type="date"
+                                name="timestamp"
+                                id="timestamp"
+                                value="{{ tx.timestamp.strftime('%Y-%m-%d') }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="symbol">Symbol</label>
+
+                            <input
+                                type="text"
+                                name="symbol"
+                                id="symbol"
+                                value="{{ tx.symbol }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="price">Price</label>
+
+                            <input
+                                type="number"
+                                step="0.0001"
+                                name="price"
+                                id="price"
+                                value="{{ tx.price }}"
+                                required
+                            >
+                        </div>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quantity">Quantity</label>
+
+                        <input
+                            type="number"
+                            step="0.0001"
+                            name="quantity"
+                            id="quantity"
+                            value="{{ tx.quantity }}"
+                            required
+                        >
+                    </div>
+
+                    <input type="hidden" name="fee" value="{{ tx.fee or 0 }}">
+                    <input type="hidden" name="exchange" value="{{ tx.exchange or 'BYBIT' }}">
+                    <input type="hidden" name="note" value="{{ tx.note or '' }}">
+
+                    <button type="submit" class="btn-primary full-btn">
+                        Save Changes
+                    </button>
+
+                </form>
+
+            </div>
+
+            <div class="card-box transaction-side-card">
+
+                <h2>Transaction Preview</h2>
+                <p>Review the updated transaction before saving.</p>
+
+                <div class="preview-list">
+
+                    <div class="preview-row">
+                        <span>Type</span>
+                        <strong id="previewType">{{ tx.type }}</strong>
+                    </div>
+
+                    <div class="preview-row">
+                        <span>Coin</span>
+                        <strong id="previewSymbol">{{ tx.symbol }}</strong>
+                    </div>
+
+                    <div class="preview-row">
+                        <span>Price</span>
+                        <strong id="previewPrice">${{ tx.price }}</strong>
+                    </div>
+
+                    <div class="preview-row">
+                        <span>Quantity</span>
+                        <strong id="previewQty">{{ tx.quantity }}</strong>
+                    </div>
+
+                    <div class="preview-row preview-row-total">
+                        <span>Estimated Total</span>
+                        <strong id="previewTotal">
+                            ${{ (tx.quantity * tx.price) | round(2) }}
+                        </strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+const typeInput = document.getElementById("type");
+const symbolInput = document.getElementById("symbol");
+const priceInput = document.getElementById("price");
+const quantityInput = document.getElementById("quantity");
+
+const previewType = document.getElementById("previewType");
+const previewSymbol = document.getElementById("previewSymbol");
+const previewPrice = document.getElementById("previewPrice");
+const previewQty = document.getElementById("previewQty");
+const previewTotal = document.getElementById("previewTotal");
+
+const selectedSymbolPreview = document.getElementById("selectedSymbolPreview");
+const selectedPricePreview = document.getElementById("selectedPricePreview");
+
+function updateTransactionPreview() {
+    const type = typeInput.value || "BUY";
+    const symbol = symbolInput.value || "BTC";
+    const price = parseFloat(priceInput.value || 0);
+    const qty = parseFloat(quantityInput.value || 0);
+    const total = price * qty;
+
+    previewType.innerText = type;
+    previewSymbol.innerText = symbol.toUpperCase();
+    previewPrice.innerText = "$" + price.toLocaleString();
+    previewQty.innerText = qty ? qty.toLocaleString() : "0";
+
+    previewTotal.innerText =
+        "$" + total.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+    selectedSymbolPreview.innerText = symbol.toUpperCase();
+    selectedPricePreview.innerText = "$" + price.toLocaleString();
+}
+
+typeInput.addEventListener("change", updateTransactionPreview);
+symbolInput.addEventListener("input", updateTransactionPreview);
+priceInput.addEventListener("input", updateTransactionPreview);
+quantityInput.addEventListener("input", updateTransactionPreview);
+
+updateTransactionPreview();
+</script>
+
 </body>
 </html>

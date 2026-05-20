@@ -3,44 +3,389 @@
 <head>
     <title>Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-    <h1>Crypto Dashboard</h1>
 
-    <p>Total Income This Month: {{ summary.income }}</p>
-    <p>Total Outcome This Month: {{ summary.outcome }}</p>
-    <p>Realized PnL This Month: {{ summary.realized_pnl }}</p>
+<div class="app-layout">
 
-    <canvas id="summaryChart" width="400" height="200"></canvas>
+    <aside class="sidebar">
+        <h2>CryptoManager</h2>
 
-    <br>
-    <a href="{{ url_for('main.transactions') }}">View Transactions</a>
+        <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('main.market') }}">Market / Buy</a>
+        <a href="{{ url_for('main.transactions') }}">Transactions</a>
+        <a href="{{ url_for('main.export_csv') }}">Export CSV</a>
+        <a href="{{ url_for('main.logout') }}">Logout</a>
+    </aside>
 
-    <script>
-        fetch("/api/summary")
-            .then(response => response.json())
-            .then(data => {
-                const ctx = document.getElementById("summaryChart").getContext("2d");
+    <main class="main-content">
 
-                new Chart(ctx, {
-                    type: "bar",
-                    data: {
-                        labels: ["Income", "Outcome", "Realized PnL"],
-                        datasets: [{
-                            label: "Monthly Summary",
-                            data: [data.income, data.outcome, data.realized_pnl]
-                        }]
+        <h1>Portfolio Dashboard</h1>
+
+        <div class="summary-grid">
+
+            <div class="card-box">
+                <p>Portfolio Value</p>
+                <h2
+                    class="count-up"
+                    data-value="{{ portfolio_summary.total_market_value }}"
+                    data-prefix="$"
+                >
+                    $0
+                </h2>
+            </div>
+
+            <div class="card-box">
+                <p>Total Cost Basis</p>
+                <h2
+                    class="count-up"
+                    data-value="{{ portfolio_summary.total_cost_basis }}"
+                    data-prefix="$"
+                >
+                    $0
+                </h2>
+            </div>
+
+            <div class="card-box">
+                <p>Unrealized PnL</p>
+                <h2
+                    class="count-up {% if portfolio_summary.total_unrealized_pnl >= 0 %}green{% else %}red{% endif %}"
+                    data-value="{{ portfolio_summary.total_unrealized_pnl }}"
+                    data-prefix="$"
+                >
+                    $0
+                </h2>
+            </div>
+
+            <div class="card-box">
+                <p>Realized PnL</p>
+                <h2
+                    class="count-up {% if summary.realized_pnl >= 0 %}green{% else %}red{% endif %}"
+                    data-value="{{ summary.realized_pnl }}"
+                    data-prefix="$"
+                >
+                    $0
+                </h2>
+            </div>
+
+        </div>
+
+        <div class="stats-grid">
+
+            <div class="card-box stat-card">
+                <p>Total Trades</p>
+                <h3>{{ statistics.total_trades }}</h3>
+            </div>
+
+            <div class="card-box stat-card">
+                <p>Buy Volume</p>
+                <h3>${{ statistics.buy_volume }}</h3>
+            </div>
+
+            <div class="card-box stat-card">
+                <p>Sell Volume</p>
+                <h3>${{ statistics.sell_volume }}</h3>
+            </div>
+
+            <div class="card-box stat-card">
+                <p>ROI</p>
+                <h3 class="{% if statistics.roi >= 0 %}green{% else %}red{% endif %}">
+                    {{ statistics.roi }}%
+                </h3>
+            </div>
+
+            <div class="card-box stat-card">
+                <p>Best Coin</p>
+                <h3>{{ statistics.best_coin }}</h3>
+            </div>
+
+            <div class="card-box stat-card">
+                <p>Worst Coin</p>
+                <h3>{{ statistics.worst_coin }}</h3>
+            </div>
+
+        </div>
+
+        <div class="analytics-layout">
+
+            <div class="card-box dark-chart-card pnl-card">
+                <div class="card-header-row">
+                    <div>
+                        <h2>Your PnL Over Time</h2>
+                        <p>Portfolio profit and loss movement based on your transactions.</p>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper">
+                    <canvas id="pnlChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card-box allocation-card">
+                <div class="card-header-row">
+                    <div>
+                        <h2>Portfolio Allocation</h2>
+                        <p>Your holdings distribution by market value.</p>
+                    </div>
+                </div>
+
+                <div class="allocation-shell">
+                    <div class="allocation-chart-panel">
+                        <div class="allocation-chart-wrap">
+                            <canvas id="allocationChart"></canvas>
+                            <div class="allocation-center">
+                                <span>Total Value</span>
+                                <strong>${{ portfolio_summary.total_market_value }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="allocation-legend-panel">
+                        <div id="allocationLegend" class="allocation-legend-list"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card-box">
+            <h2>My Watchlist</h2>
+
+            {% if watchlist_data %}
+            <div class="watchlist-grid">
+                {% for coin in watchlist_data %}
+                <div class="watchlist-item">
+                    <strong>{{ coin.symbol }}</strong>
+                    <span>${{ coin.price }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No coins in your watchlist yet. Add some from the Market page.</p>
+            {% endif %}
+        </div>
+
+        <div class="card-box">
+            <h2>Coins You Are Holding</h2>
+
+            {% if portfolio_summary.portfolio %}
+            <table>
+                <tr>
+                    <th>Coin</th>
+                    <th>Quantity</th>
+                    <th>Live Price</th>
+                    <th>Market Value</th>
+                    <th>Cost Basis</th>
+                    <th>Unrealized PnL</th>
+                </tr>
+
+                {% for p in portfolio_summary.portfolio %}
+                <tr>
+                    <td>{{ p.symbol }}</td>
+                    <td>{{ p.quantity }}</td>
+                    <td>${{ p.live_price }}</td>
+                    <td>${{ p.market_value }}</td>
+                    <td>${{ p.cost_basis }}</td>
+                    <td class="{% if p.unrealized_pnl >= 0 %}green{% else %}red{% endif %}">
+                        ${{ p.unrealized_pnl }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>No holdings yet. Go to Market / Buy to add your first coin.</p>
+            {% endif %}
+        </div>
+
+    </main>
+
+</div>
+
+<script id="allocation-data" type="application/json">
+    {{ portfolio_summary.portfolio | tojson }}
+</script>
+
+<script>
+function animateNumbers() {
+    const elements = document.querySelectorAll(".count-up");
+
+    elements.forEach((el) => {
+        const target = parseFloat(el.dataset.value || 0);
+        const prefix = el.dataset.prefix || "";
+        const duration = 900;
+        const startTime = performance.now();
+
+        function update(currentTime) {
+            const progress = Math.min((currentTime - startTime) / duration, 1);
+            const value = target * progress;
+
+            el.innerText =
+                prefix +
+                value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            }
+        }
+
+        requestAnimationFrame(update);
+    });
+}
+
+animateNumbers();
+
+
+fetch("/api/pnl-chart")
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById("pnlChart").getContext("2d");
+        const lastValue = data.values[data.values.length - 1] || 0;
+        const color = lastValue >= 0 ? "#22c55e" : "#ef4444";
+
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: "PnL",
+                    data: data.values,
+                    borderColor: color,
+                    backgroundColor: color + "24",
+                    tension: 0.42,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
                     },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
+                    tooltip: {
+                        backgroundColor: "#020617",
+                        titleColor: "#f8fafc",
+                        bodyColor: "#cbd5e1",
+                        borderColor: "#334155",
+                        borderWidth: 1,
+                        padding: 12
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#94a3b8",
+                            maxTicksLimit: 5
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#94a3b8"
+                        },
+                        grid: {
+                            color: "rgba(148, 163, 184, 0.10)"
                         }
                     }
-                });
-            });
-    </script>
+                }
+            }
+        });
+    });
+
+
+const allocationCtx = document.getElementById("allocationChart");
+
+if (allocationCtx) {
+    const allocationRawData = document.getElementById("allocation-data").textContent;
+    const allocationData = JSON.parse(allocationRawData);
+
+    const allocationLabels = allocationData.map(item => item.symbol);
+    const allocationValues = allocationData.map(item => item.market_value);
+
+    const allocationColors = [
+        "#f7931a",
+        "#627eea",
+        "#14f195",
+        "#f3ba2f",
+        "#2563eb",
+        "#ef4444",
+        "#8b5cf6",
+        "#06b6d4",
+        "#84cc16",
+        "#ec4899"
+    ];
+
+    new Chart(allocationCtx, {
+        type: "doughnut",
+        data: {
+            labels: allocationLabels,
+            datasets: [{
+                data: allocationValues,
+                backgroundColor: allocationColors,
+                borderColor: "#0f172a",
+                borderWidth: 6,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "72%",
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: "#020617",
+                    titleColor: "#f8fafc",
+                    bodyColor: "#cbd5e1",
+                    borderColor: "#334155",
+                    borderWidth: 1
+                }
+            }
+        }
+    });
+
+    const totalValue = allocationValues.reduce((sum, value) => sum + value, 0);
+    const legendContainer = document.getElementById("allocationLegend");
+
+    if (legendContainer && totalValue > 0) {
+        legendContainer.innerHTML = allocationData.map((item, index) => {
+            const percent = ((item.market_value / totalValue) * 100).toFixed(1);
+
+            return `
+                <div class="allocation-legend-row">
+                    <div class="allocation-legend-left">
+                        <span class="allocation-dot" style="background:${allocationColors[index % allocationColors.length]}"></span>
+                        <div>
+                            <strong>${item.symbol}</strong>
+                            <p>$${Number(item.market_value).toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    <div class="allocation-legend-right">
+                        <strong>${percent}%</strong>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+}
+</script>
+
 </body>
 </html>

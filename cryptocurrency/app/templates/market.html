@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Market</title>
+
+    <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <h2>CryptoManager</h2>
+
+        <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('main.market') }}">Market / Buy</a>
+        <a href="{{ url_for('main.transactions') }}">Transactions</a>
+        <a href="{{ url_for('main.logout') }}">Logout</a>
+    </aside>
+
+    <main class="main-content">
+
+        <div class="page-header">
+            <div>
+                <h1>Market</h1>
+                <p>Select a coin to record a BUY or SELL transaction.</p>
+            </div>
+        </div>
+
+        <div class="market-controls card-box">
+            <input
+                type="text"
+                id="marketSearch"
+                placeholder="Search BTC / ETH / SOL..."
+            >
+
+            <select id="marketSort">
+                <option value="default">Default</option>
+                <option value="symbol_az">Symbol A-Z</option>
+                <option value="price_high">Price High → Low</option>
+                <option value="price_low">Price Low → High</option>
+            </select>
+        </div>
+
+        <div class="market-grid" id="marketGrid">
+
+            {% for coin in market_data %}
+
+            <div
+                class="market-card"
+                data-symbol="{{ coin.symbol }}"
+                data-price="{{ coin.price }}"
+            >
+
+                <div class="market-card-top">
+                    <h2>{{ coin.symbol }}</h2>
+
+                    <button
+                        class="watch-btn {% if coin.symbol in watchlist_symbols %}watched{% endif %}"
+                        data-symbol="{{ coin.symbol }}"
+                    >
+                        ★
+                    </button>
+                </div>
+
+                <p>Live Price</p>
+
+                <h3
+                    class="coin-price"
+                    id="price-{{ coin.symbol }}"
+                >
+                    ${{ coin.price }}
+                </h3>
+
+                <div
+                    class="candle-chart"
+                    id="candle-{{ coin.symbol }}"
+                ></div>
+
+                <a
+                    class="btn-primary buy-link"
+                    id="buy-link-{{ coin.symbol }}"
+                    href="{{ url_for('main.new_transaction') }}?symbol={{ coin.symbol }}&price={{ coin.price }}"
+                >
+                    Buy / Add Transaction
+                </a>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+const marketData = JSON.parse('{{ market_data | tojson | safe }}');
+
+async function loadCandles(symbol) {
+    const response = await fetch("/api/kline/" + symbol + "?interval=D&limit=60");
+    return await response.json();
+}
+
+async function renderCandlestick(symbol) {
+    const container = document.getElementById("candle-" + symbol);
+
+    const chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 160,
+        layout: {
+            background: {
+                color: "#0f172a"
+            },
+            textColor: "#94a3b8"
+        },
+        grid: {
+            vertLines: {
+                color: "rgba(148, 163, 184, 0.08)"
+            },
+            horzLines: {
+                color: "rgba(148, 163, 184, 0.08)"
+            }
+        },
+        rightPriceScale: {
+            borderColor: "#334155"
+        },
+        timeScale: {
+            borderColor: "#334155"
+        }
+    });
+
+    const candleSeries = chart.addCandlestickSeries({
+        upColor: "#22c55e",
+        downColor: "#ef4444",
+        borderUpColor: "#22c55e",
+        borderDownColor: "#ef4444",
+        wickUpColor: "#22c55e",
+        wickDownColor: "#ef4444"
+    });
+
+    const candles = await loadCandles(symbol);
+
+    candleSeries.setData(candles);
+
+    chart.timeScale().fitContent();
+
+    window.addEventListener("resize", () => {
+        chart.applyOptions({
+            width: container.clientWidth
+        });
+    });
+}
+
+marketData.forEach((coin) => {
+    renderCandlestick(coin.symbol);
+});
+
+
+async function refreshMarketPrices() {
+    try {
+        const response = await fetch("/api/market-data");
+        const newData = await response.json();
+
+        newData.forEach((coin) => {
+            const priceElement =
+                document.getElementById("price-" + coin.symbol);
+
+            const buyLink =
+                document.getElementById("buy-link-" + coin.symbol);
+
+            const card =
+                document.querySelector(
+                    `.market-card[data-symbol="${coin.symbol}"]`
+                );
+
+            if (!priceElement) return;
+
+            const oldPrice =
+                parseFloat(
+                    priceElement.innerText
+                        .replace("$", "")
+                        .replace(",", "")
+                );
+
+            const newPrice = parseFloat(coin.price);
+
+            priceElement.innerText =
+                "$" + newPrice.toLocaleString();
+
+            if (card) {
+                card.dataset.price = newPrice;
+            }
+
+            if (buyLink) {
+                buyLink.href =
+                    "/transactions/new?symbol=" +
+                    coin.symbol +
+                    "&price=" +
+                    newPrice;
+            }
+
+            if (newPrice > oldPrice) {
+                priceElement.style.color = "#22c55e";
+            } else if (newPrice < oldPrice) {
+                priceElement.style.color = "#ef4444";
+            }
+
+            setTimeout(() => {
+                priceElement.style.color = "";
+            }, 1200);
+        });
+
+    } catch (error) {
+        console.log("Realtime market update failed", error);
+    }
+}
+
+setInterval(refreshMarketPrices, 5000);
+
+
+document.getElementById("marketSearch").addEventListener("input", function () {
+    const keyword = this.value.toUpperCase();
+    const cards = document.querySelectorAll(".market-card");
+
+    cards.forEach((card) => {
+        const symbol = card.dataset.symbol.toUpperCase();
+
+        card.style.display =
+            symbol.includes(keyword)
+                ? "block"
+                : "none";
+    });
+});
+
+
+document.getElementById("marketSort").addEventListener("change", function () {
+    const grid = document.getElementById("marketGrid");
+
+    const cards = Array.from(
+        document.querySelectorAll(".market-card")
+    );
+
+    const sortType = this.value;
+
+    cards.sort((a, b) => {
+        const symbolA = a.dataset.symbol;
+        const symbolB = b.dataset.symbol;
+
+        const priceA = parseFloat(a.dataset.price || 0);
+        const priceB = parseFloat(b.dataset.price || 0);
+
+        if (sortType === "symbol_az") {
+            return symbolA.localeCompare(symbolB);
+        }
+
+        if (sortType === "price_high") {
+            return priceB - priceA;
+        }
+
+        if (sortType === "price_low") {
+            return priceA - priceB;
+        }
+
+        return 0;
+    });
+
+    cards.forEach(card => grid.appendChild(card));
+});
+
+
+document.querySelectorAll(".watch-btn").forEach((button) => {
+    button.addEventListener("click", async function () {
+        const symbol = this.dataset.symbol;
+
+        const response = await fetch(
+            "/watchlist/toggle/" + symbol,
+            {
+                method: "POST"
+            }
+        );
+
+        const data = await response.json();
+
+        if (data.watched) {
+            this.classList.add("watched");
+        } else {
+            this.classList.remove("watched");
+        }
+    });
+});
+</script>
+
+</body>
+</html>

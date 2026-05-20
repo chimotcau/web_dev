@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crypto Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="landing">
+
+    <nav class="top-nav">
+        <h2>CryptoManager</h2>
+
+        <div>
+            <a href="{{ url_for('main.login') }}">Login</a>
+            <a class="btn-primary" href="{{ url_for('main.register') }}">Register</a>
+        </div>
+    </nav>
+
+    <section class="hero-section hero-section-balanced">
+
+        <div>
+
+            <h1>Manage your crypto portfolio like a pro.</h1>
+
+            <p>
+                Track your buy and sell transactions, monitor holdings,
+                calculate profit and loss, and view live market prices from Bybit.
+            </p>
+
+            <div class="hero-buttons">
+                <a class="btn-primary" href="{{ url_for('main.register') }}">
+                    Get Started
+                </a>
+
+                <a class="btn-secondary" href="{{ url_for('main.login') }}">
+                    Login
+                </a>
+            </div>
+
+        </div>
+
+        <div class="hero-panel wide-preview">
+
+            <h3>Live Portfolio Preview</h3>
+
+            {% set preview_coins = [
+                ("BTC", "$105,000", "+4.2%", "green", "preview-btc"),
+                ("ETH", "$3,400", "+2.1%", "green", "preview-eth"),
+                ("SOL", "$170", "-1.4%", "red", "preview-sol"),
+                ("BNB", "$640", "+1.7%", "green", "preview-bnb"),
+                ("XRP", "$1.36", "-0.8%", "red", "preview-xrp"),
+                ("ADA", "$0.25", "+3.4%", "green", "preview-ada")
+            ] %}
+
+            {% for symbol, price, change, color, chart_id in preview_coins %}
+
+            <div class="preview-market-row">
+
+                <div>
+                    <strong>{{ symbol }}</strong>
+
+                    <p id="preview-price-{{ symbol }}">
+                        {{ price }}
+                    </p>
+                </div>
+
+                <canvas id="{{ chart_id }}"></canvas>
+
+                <span class="{{ color }}">
+                    {{ change }}
+                </span>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    </section>
+
+    <section class="feature-grid feature-grid-fixed">
+
+        <div class="feature-card">
+            <h3>Transaction Tracking</h3>
+            <p>Add BUY and SELL transactions manually.</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>Live Bybit Prices</h3>
+            <p>Estimate portfolio value using public Bybit market data.</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>PnL Analytics</h3>
+            <p>View realized and unrealized profit/loss.</p>
+        </div>
+
+    </section>
+
+</div>
+
+<script>
+
+function miniChart(id, data, color) {
+
+    const ctx =
+        document.getElementById(id).getContext("2d");
+
+    new Chart(ctx, {
+
+        type: "line",
+
+        data: {
+            labels: data.map((_, i) => i),
+
+            datasets: [{
+                data: data,
+                borderColor: color,
+                backgroundColor: color + "22",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 0,
+                borderWidth: 2
+            }]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+
+            scales: {
+                x: {
+                    display: false
+                },
+
+                y: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+miniChart("preview-btc", [60, 64, 63, 68, 72, 78, 82], "#22c55e");
+miniChart("preview-eth", [40, 42, 45, 43, 47, 50, 53], "#22c55e");
+miniChart("preview-sol", [80, 76, 78, 73, 70, 68, 65], "#ef4444");
+miniChart("preview-bnb", [50, 52, 55, 54, 59, 62, 66], "#22c55e");
+miniChart("preview-xrp", [70, 68, 66, 67, 63, 61, 59], "#ef4444");
+miniChart("preview-ada", [30, 33, 34, 36, 39, 41, 45], "#22c55e");
+
+
+async function refreshPreviewPrices() {
+
+    try {
+
+        const response =
+            await fetch("/api/preview-market");
+
+        const data =
+            await response.json();
+
+        data.forEach((coin) => {
+
+            const el =
+                document.getElementById(
+                    "preview-price-" + coin.symbol
+                );
+
+            if (!el) return;
+
+            const oldPrice =
+                parseFloat(
+                    el.innerText
+                        .replace("$", "")
+                        .replace(",", "")
+                );
+
+            const newPrice =
+                parseFloat(coin.price);
+
+            el.innerText =
+                "$" + newPrice.toLocaleString();
+
+            if (newPrice > oldPrice) {
+
+                el.style.color =
+                    "#22c55e";
+
+            } else if (newPrice < oldPrice) {
+
+                el.style.color =
+                    "#ef4444";
+            }
+
+            setTimeout(() => {
+
+                el.style.color =
+                    "";
+
+            }, 1200);
+
+        });
+
+    } catch (error) {
+
+        console.log(
+            "Preview realtime failed",
+            error
+        );
+    }
+}
+
+setInterval(refreshPreviewPrices, 5000);
+
+</script>
+
+</body>
+</html>

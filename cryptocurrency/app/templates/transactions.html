@@ -2,54 +2,179 @@
 <html>
 <head>
     <title>Transactions</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-    <h1>Transactions</h1>
 
-    <a href="{{ url_for('main.new_transaction') }}">Add New Transaction</a>
-    <br><br>
+<div class="app-layout">
 
-    {% if txs %}
-        <table border="1" cellpadding="8">
-            <tr>
-                <th>ID</th>
-                <th>Type</th>
-                <th>Symbol</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Fee</th>
-                <th>Date</th>
-                <th>Exchange</th>
-                <th>Note</th>
-                <th>Actions</th>
-            </tr>
+    <aside class="sidebar">
+        <h2>CryptoManager</h2>
 
-            {% for tx in txs %}
-            <tr>
-                <td>{{ tx.id }}</td>
-                <td>{{ tx.type }}</td>
-                <td>{{ tx.symbol }}</td>
-                <td>{{ tx.quantity }}</td>
-                <td>{{ tx.price }}</td>
-                <td>{{ tx.fee }}</td>
-                <td>{{ tx.timestamp.strftime('%Y-%m-%d') }}</td>
-                <td>{{ tx.exchange }}</td>
-                <td>{{ tx.note }}</td>
-                <td>
-                    <a href="{{ url_for('main.edit_transaction', id=tx.id) }}">Edit</a>
+        <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('main.market') }}">Market / Buy</a>
+        <a href="{{ url_for('main.transactions') }}">Transactions</a>
+        <a href="{{ url_for('main.export_csv') }}">Export CSV</a>
+        <a href="{{ url_for('main.logout') }}">Logout</a>
+    </aside>
 
-                    <form action="{{ url_for('main.delete_transaction', id=tx.id) }}" method="POST" style="display:inline;">
-                        <button type="submit">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No transactions yet.</p>
-    {% endif %}
+    <main class="main-content">
 
-    <br>
-    <a href="{{ url_for('main.dashboard') }}">Back to Dashboard</a>
+        <div class="page-header">
+            <div>
+                <h1>Transactions</h1>
+                <p>Manage and filter your trading history.</p>
+            </div>
+
+            <a class="btn-primary" href="{{ url_for('main.new_transaction') }}">
+                Add Transaction
+            </a>
+        </div>
+
+        <div class="card-box">
+            <h2>Advanced Filter</h2>
+
+            <form method="GET" class="advanced-filter-form">
+
+                <input
+                    type="text"
+                    name="symbol"
+                    placeholder="BTC / ETH"
+                    value="{{ request.args.get('symbol', '') }}"
+                >
+
+                <select name="type">
+                    <option value="">All Types</option>
+
+                    <option value="BUY" {% if request.args.get('type') == 'BUY' %}selected{% endif %}>
+                        BUY
+                    </option>
+
+                    <option value="SELL" {% if request.args.get('type') == 'SELL' %}selected{% endif %}>
+                        SELL
+                    </option>
+                </select>
+
+                <input
+                    type="date"
+                    name="date_from"
+                    value="{{ request.args.get('date_from', '') }}"
+                >
+
+                <input
+                    type="date"
+                    name="date_to"
+                    value="{{ request.args.get('date_to', '') }}"
+                >
+
+                <select name="sort">
+                    <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>
+                        Newest
+                    </option>
+
+                    <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>
+                        Oldest
+                    </option>
+
+                    <option value="amount_high" {% if request.args.get('sort') == 'amount_high' %}selected{% endif %}>
+                        Amount High → Low
+                    </option>
+
+                    <option value="amount_low" {% if request.args.get('sort') == 'amount_low' %}selected{% endif %}>
+                        Amount Low → High
+                    </option>
+                </select>
+
+                <button type="submit" class="small-btn">
+                    Apply
+                </button>
+
+                <a class="small-link" href="{{ url_for('main.transactions') }}">
+                    Clear
+                </a>
+
+            </form>
+        </div>
+
+        <div class="card-box">
+
+            <div class="table-top">
+                <h2>Transaction History</h2>
+
+                <a class="btn-secondary" href="{{ url_for('main.export_csv') }}">
+                    Export CSV
+                </a>
+            </div>
+
+            {% if txs %}
+
+            <table>
+
+                <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Symbol</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Fee</th>
+                    <th>Date</th>
+                    <th>Exchange</th>
+                    <th>Actions</th>
+                </tr>
+
+                {% for tx in txs %}
+
+                <tr>
+                    <td>{{ tx.id }}</td>
+
+                    <td>
+                        <span class="tag {% if tx.type == 'BUY' %}tag-buy{% else %}tag-sell{% endif %}">
+                            {{ tx.type }}
+                        </span>
+                    </td>
+
+                    <td>{{ tx.symbol.upper() }}</td>
+                    <td>{{ tx.quantity }}</td>
+                    <td>${{ tx.price }}</td>
+                    <td>${{ (tx.quantity * tx.price) | round(2) }}</td>
+                    <td>${{ tx.fee }}</td>
+                    <td>{{ tx.timestamp.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ tx.exchange }}</td>
+
+                    <td>
+                        <a class="small-link" href="{{ url_for('main.edit_transaction', id=tx.id) }}">
+                            Edit
+                        </a>
+
+                        <form
+                            action="{{ url_for('main.delete_transaction', id=tx.id) }}"
+                            method="POST"
+                            style="display:inline;"
+                        >
+                            <button type="submit" class="danger-btn">
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </table>
+
+            {% else %}
+
+            <p>No transactions found.</p>
+
+            {% endif %}
+
+        </div>
+
+    </main>
+
+</div>
+
 </body>
 </html>
