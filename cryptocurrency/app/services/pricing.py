@@ -1,8 +1,13 @@
-import requests
 from datetime import datetime, timedelta
 
-from ..models import PriceCache
+import requests
+
 from .. import db
+from ..models import PriceCache
+
+
+BYBIT_TICKER_URL = "https://api.bybit.com/v5/market/tickers"
+BYBIT_KLINE_URL = "https://api.bybit.com/v5/market/kline"
 
 
 def get_live_price(symbol):
@@ -15,24 +20,29 @@ def get_live_price(symbol):
         if age < timedelta(seconds=60):
             return cached.price
 
-    bybit_symbol = f"{symbol}USDT"
-
-    url = "https://api.bybit.com/v5/market/tickers"
-
     params = {
         "category": "spot",
-        "symbol": bybit_symbol
+        "symbol": f"{symbol}USDT"
     }
 
-    response = requests.get(url, params=params)
-    data = response.json()
+    try:
+        response = requests.get(
+            BYBIT_TICKER_URL,
+            params=params,
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
 
-    result_list = data["result"]["list"]
+        result_list = data.get("result", {}).get("list", [])
 
-    if not result_list:
-        return None
+        if not result_list:
+            return cached.price if cached else None
 
-    price = float(result_list[0]["lastPrice"])
+        price = float(result_list[0]["lastPrice"])
+
+    except (requests.RequestException, KeyError, TypeError, ValueError):
+        return cached.price if cached else None
 
     if cached:
         cached.price = price
@@ -50,21 +60,24 @@ def get_live_price(symbol):
 
     return price
 
+
 def get_kline_data(symbol, interval="D", limit=60):
     symbol = symbol.upper()
-    bybit_symbol = f"{symbol}USDT"
-
-    url = "https://api.bybit.com/v5/market/kline"
 
     params = {
         "category": "spot",
-        "symbol": bybit_symbol,
+        "symbol": f"{symbol}USDT",
         "interval": interval,
         "limit": limit
     }
 
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(
+            BYBIT_KLINE_URL,
+            params=params,
+            timeout=10
+        )
+        response.raise_for_status()
         data = response.json()
 
         raw_candles = data.get("result", {}).get("list", [])
@@ -83,5 +96,5 @@ def get_kline_data(symbol, interval="D", limit=60):
 
         return candles
 
-    except Exception:
+    except (requests.RequestException, KeyError, TypeError, ValueError):
         return []

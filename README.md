@@ -1,73 +1,60 @@
-# 💰 Personal Cryptocurrency Manager Website
+# Crypto Portfolio Manager
 
-A web-based application designed to help users efficiently track and manage their cryptocurrency investments. This website enables users to record trading activities, track financial performance, and visualize income and outcome through charts. The system is based on the Bybit platform.
+A Flask web application for tracking personal cryptocurrency transactions, portfolio value, and profit/loss.
 
----
+## Features
 
-## 📌 Project Overview
+- User registration and login
+- User-specific transactions and portfolio dashboard
+- BUY / SELL transaction CRUD
+- Transaction filters, date filters, sorting, and CSV export
+- FIFO-based realized P&L and remaining cost basis
+- Live public Bybit prices with local cache
+- Realtime market page with search and sorting
+- Candlestick charts using Bybit kline data
+- Watchlist
+- Portfolio allocation chart
+- Portfolio statistics: trade count, volumes, ROI, best/worst coin
 
-The Personal Cryptocurrency Manager website allows users to:
+## Tech Stack
 
-- Record cryptocurrency transactions (buy, sell, transfer)
-- Track portfolio performance
-- Calculate profit and loss automatically
-- Visualize income and expense trends
-- Analyze trading activity with filtering and statistics
+- Flask
+- Flask-SQLAlchemy
+- Flask-Migrate / Alembic
+- Flask-Login
+- SQLite for local development
+- PostgreSQL-ready deployment via `DATABASE_URL`
+- Chart.js and lightweight-charts on the frontend
 
-The goal of this project is to provide a simple, easy-to-use, and free website for managing personal cryptocurrency investments.
+## Local Setup
 
----
+```powershell
+cd cryptocurrency
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python -m flask --app run.py db upgrade
+python run.py
+```
 
-## 🚀 Key Features
+Open:
 
-### 📝 Transaction Management
+```text
+http://127.0.0.1:5000/
+```
 
-- Add, edit, and delete transactions
-- Record:
-  - Cryptocurrency name
-  - Quantity
-  - Buy/Sell price
-  - Transaction date
-  - Fees
+## Deployment Notes
 
----
+The app reads `DATABASE_URL` automatically. For PostgreSQL providers that expose `postgres://...`, the app converts it to `postgresql://...`.
 
-### 📊 Portfolio Tracking
+Set a strong `SECRET_KEY` in production.
 
-- Automatic profit and loss calculation
-- Total investment value tracking
-- Current portfolio valuation
+## Do Not Commit
 
----
+The repository ignores local database and cache files:
 
-### 📈 Data Visualization
-
-Charts include:
-
-- Income and expenses
-- Daily / Monthly profit
-- Portfolio growth over time
-- Asset allocation breakdown
-
-Includes trend analysis to support better decision-making.
-
----
-
-### 🔍 Filtering & Analytics
-
-Filter transactions by:
-
-- Date range
-- Cryptocurrency
-- Exchange
-
-Provides financial summaries and performance statistics.
-
----
-
-## 🛠️ Technologies Used
-
-- **Backend:** Flask (Python)
-- **Database:** PostgreSQL
-- **Frontend:** HTML, CSS
-- **Charts:** Chart.js
+- `instance/`
+- `*.db`
+- `__pycache__/`
+- `.env`
+- virtual environments

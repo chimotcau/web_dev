@@ -22,7 +22,12 @@ def upgrade():
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("symbol", sa.String(length=20), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
-        sa.PrimaryKeyConstraint("id")
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "user_id",
+            "symbol",
+            name="uq_watchlist_user_symbol"
+        )
     )
 
 

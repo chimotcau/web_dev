@@ -30,7 +30,6 @@ from . import db
 
 from .services.analytics import (
     get_monthly_summary,
-    get_holdings_summary,
     get_portfolio_summary,
     get_statistics_summary
 )
@@ -67,7 +66,6 @@ def home():
 @login_required
 def dashboard():
     summary = get_monthly_summary()
-    holdings = get_holdings_summary()
     portfolio_summary = get_portfolio_summary()
     statistics = get_statistics_summary()
 
@@ -88,7 +86,6 @@ def dashboard():
     return render_template(
         "dashboard.html",
         summary=summary,
-        holdings=holdings,
         portfolio_summary=portfolio_summary,
         statistics=statistics,
         watchlist_data=watchlist_data

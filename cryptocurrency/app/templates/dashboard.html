@@ -90,6 +90,16 @@
             </div>
 
             <div class="card-box stat-card">
+                <p>Avg Buy Price</p>
+                <h3>${{ statistics.avg_buy_price }}</h3>
+            </div>
+
+            <div class="card-box stat-card">
+                <p>Avg Sell Price</p>
+                <h3>${{ statistics.avg_sell_price }}</h3>
+            </div>
+
+            <div class="card-box stat-card">
                 <p>ROI</p>
                 <h3 class="{% if statistics.roi >= 0 %}green{% else %}red{% endif %}">
                     {{ statistics.roi }}%

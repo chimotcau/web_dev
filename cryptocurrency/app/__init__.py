@@ -1,12 +1,15 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_login import LoginManager
 import os
+
+from flask import Flask
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+
 
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
+
 
 def create_app():
     app = Flask(__name__)
@@ -19,12 +22,15 @@ def create_app():
             "postgresql://",
             1
         )
+
     app.config["SQLALCHEMY_DATABASE_URI"] = (
         database_url or "sqlite:///portfolio.db"
     )
-    
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SECRET_KEY"] = "mysecretkey"
+    app.config["SECRET_KEY"] = os.getenv(
+        "SECRET_KEY",
+        "dev-secret-key-change-me"
+    )
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -32,7 +38,8 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = "main.login"
 
-    from .models import Transaction, PriceCache, User, Watchlist
+    # Import models so Flask-Migrate can detect them.
+    from .models import PriceCache, Transaction, User, Watchlist  # noqa: F401
 
     from .routes import main
     app.register_blueprint(main)
@@ -43,4 +50,5 @@ def create_app():
 @login_manager.user_loader
 def load_user(user_id):
     from .models import User
-    return User.query.get(int(user_id))
+
+    return db.session.get(User, int(user_id))
