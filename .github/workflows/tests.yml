@@ -40,5 +40,5 @@ jobs:
         env:
           FLASK_ENV: testing
           SECRET_KEY: test-secret-key
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
         run: python -m pytest -q
